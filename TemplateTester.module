@@ -1,0 +1,83 @@
+<?php namespace ProcessWire;
+
+/**
+ * Lets editors test new PHP templates while other users and guests still see
+ * the pages rendered using the original template.
+ *
+ * The template file to test can be set in the PW templates' configuration
+ * at the bottom of the Files tab.
+ *
+ * (c) 2022 BitPoet
+ * Released under MPL-2.0
+ */
+
+class TemplateTester extends WireData implements Module {
+
+	public static function getModuleInfo() {
+		return [
+			'title'			=>	'Template Tester',
+			'summary'		=>	__('Assign different php templates to your PW templates so editors can test them', __FILE__),
+			'version'		=>	'0.0.5',
+			'autoload'		=>	true
+		];
+	}
+	
+	public function __construct() {
+		parent::__construct();
+
+		$this->addHookAfter('ProcessTemplate::buildEditForm', $this, 'addTemplateField');
+		$this->addHookBefore('ProcessTemplate::executeSave', $this, 'setAdditionalFields');
+		$this->addHookBefore('ProcessPageView::execute', $this, 'switchTemplateFile');
+	}
+	
+	
+	public function addTemplateField(HookEvent $event) {
+		
+		$template = $event->arguments(0);
+		
+		$form = $event->return;
+		$filesTab = $form->getByAttr('id', 'tab_files');
+		
+		$f = $this->modules->get('InputfieldText');
+		$f->attr('name', 'altEditorFilename');
+		$f->label = $this->_('Alternate template file for editors');
+		$f->description = $this->_('Lets you assing a different template for users with edit permissions so they can preview / test new developments');
+		$f->attr('value', $template->altEditorFilename);
+		$f->collapsed = Inputfield::collapsedBlank;
+		$f->notes = 
+			sprintf($this->_('Template files are assumed to be in directory: %s'), $this->config->urls->templates) . "\n" .
+			sprintf($this->_('Template file extension is assumed to be: %s'), '.' . $this->config->templateExtension);
+		
+		$filesTab->append($f);
+		
+		$event->return = $form;
+		
+	}
+	
+	public function switchTemplateFile(HookEvent $event) {
+		
+		$page = $event->object->getPage();
+		
+		if(empty($page->template->altEditorFilename))
+			return;
+		
+		if(!$page->editable())
+			return;
+		
+		$page->template->altFilename = $page->template->altEditorFilename;
+		
+	}
+	
+	public function setAdditionalFields(HookEvent $event) {
+		
+		$id = (int) $this->input->post('id');
+		if(!$id)
+			$id = (int) $this->input->get('id');
+		$template = $this->templates->get($id);
+		
+		$template->set('altEditorFilename', basename($this->input->post->altEditorFilename, "." . $this->config->templateExtension));
+		
+	}
+	
+	
+}
