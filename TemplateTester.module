@@ -17,7 +17,7 @@ class TemplateTester extends WireData implements Module {
 		return [
 			'title'			=>	'Template Tester',
 			'summary'		=>	__('Assign different php templates to your PW templates so editors can test them', __FILE__),
-			'version'		=>	'0.0.5',
+			'version'		=>	'0.0.6',
 			'autoload'		=>	true
 		];
 	}
@@ -25,31 +25,50 @@ class TemplateTester extends WireData implements Module {
 	public function __construct() {
 		parent::__construct();
 
-		$this->addHookAfter('ProcessTemplate::buildEditForm', $this, 'addTemplateField');
+		$this->addHookAfter('ProcessTemplate::buildEditForm', $this, 'addTemplateFields');
 		$this->addHookBefore('ProcessTemplate::executeSave', $this, 'setAdditionalFields');
 		$this->addHookBefore('ProcessPageView::execute', $this, 'switchTemplateFile');
 	}
 	
 	
-	public function addTemplateField(HookEvent $event) {
+	public function addTemplateFields(HookEvent $event) {
 		
 		$template = $event->arguments(0);
 		
 		$form = $event->return;
 		$filesTab = $form->getByAttr('id', 'tab_files');
 		
+		
 		$f = $this->modules->get('InputfieldText');
 		$f->attr('name', 'altEditorFilename');
-		$f->label = $this->_('Alternate template file for editors');
-		$f->description = $this->_('Lets you assing a different template for users with edit permissions so they can preview / test new developments');
+		$f->label = $this->_('Alternate template file for testing');
+		$f->description = $this->_('Lets you assing a different template for certain users so they can preview / test new developments');
 		$f->attr('value', $template->altEditorFilename);
 		$f->collapsed = Inputfield::collapsedBlank;
 		$f->notes = 
 			sprintf($this->_('Template files are assumed to be in directory: %s'), $this->config->urls->templates) . "\n" .
 			sprintf($this->_('Template file extension is assumed to be: %s'), '.' . $this->config->templateExtension);
-		
 		$filesTab->append($f);
 		
+		$f = $this->modules->get('InputfieldRadios');
+		$f->attr('name', 'altEditorFileFilter');
+		$f->label = $this->_("Apply alternative PHP template to");
+		$f->addOption('loggedin', 'All logged in users');
+		$f->addOption('pageeditors', 'Users with edit permission for the individual page');
+		$f->addOption('role', 'Users with a specific role');
+		$f->attr('value', $template->altEditorFileFilter);
+		$filesTab->append($f);
+		
+		$f = $this->modules->get('InputfieldASMSelect');
+		$f->attr('name', 'altEditorFileRole');
+		$f->showIf = "altEditorFileFilter=role";
+		$f->label = $this->_("Role for alternative template");
+		foreach($this->roles as $role) {
+			$f->addOption($role->id, $role->name);
+		}
+		$f->attr('value', $template->altEditorFileRole);
+		$filesTab->append($f);
+
 		$event->return = $form;
 		
 	}
@@ -61,8 +80,26 @@ class TemplateTester extends WireData implements Module {
 		if(empty($page->template->altEditorFilename))
 			return;
 		
-		if(!$page->editable())
+		if($page->template->altEditorFileFilter === 'loggedin' && !$this->user->isLoggedin())
 			return;
+		
+		if($page->template->altEditorFileFilter === 'pageeditors' && !$page->editable())
+			return;
+		
+		if($page->template->altEditorFileFilter === 'role') {
+		 
+			if(!is_array($page->template->altEditorFileRole))
+		 		return;
+		 
+			$inRoles = false;
+			foreach($page->template->altEditorFileRole as $roleToCheck) {
+		  		if($this->user->hasRole($roleToCheck))
+					$inRoles = true;
+			}
+			
+			if(!$inRoles)
+				return;
+		}
 		
 		$page->template->altFilename = $page->template->altEditorFilename;
 		
@@ -76,6 +113,13 @@ class TemplateTester extends WireData implements Module {
 		$template = $this->templates->get($id);
 		
 		$template->set('altEditorFilename', basename($this->input->post->altEditorFilename, "." . $this->config->templateExtension));
+		$template->set('altEditorFileFilter', $this->sanitizer->name($this->input->post->altEditorFileFilter));
+		$template->set(
+			'altEditorFileRole',
+			is_array($this->input->post->altEditorFileRole) ?
+			array_map(function($item) { return (int)$item; }, $this->input->post->altEditorFileRole) :
+			(int)$this->input->post->altEditorFileRole
+		);
 		
 	}
 	
