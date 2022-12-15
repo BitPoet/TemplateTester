@@ -1,13 +1,13 @@
 # TemplateTester
-ProcessWire module for testing alternative PHP template files
+ProcessWire module for testing PHP template files
 
 # Status
 Beta
 
 # Description
-Adds a field 'Alternative template file for testing' to the template configuration.
+Adds a field 'Alternate template file for testing' to the template configuration.
 
-You can also configure which users will see the alternative template file.
+You can also configure which users will see the alternate template file.
 You can select from:
 - All logged in users
 - Users with edit permissions for the individual page

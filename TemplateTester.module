@@ -15,9 +15,9 @@ class TemplateTester extends WireData implements Module {
 
 	public static function getModuleInfo() {
 		return [
-			'title'			=>	'Template Tester',
+			'title'			=>	'Template File Tester',
 			'summary'		=>	__('Assign different php templates to your PW templates so editors can test them', __FILE__),
-			'version'		=>	'0.0.6',
+			'version'		=>	'0.0.7',
 			'autoload'		=>	true
 		];
 	}
@@ -41,7 +41,7 @@ class TemplateTester extends WireData implements Module {
 		
 		$f = $this->modules->get('InputfieldText');
 		$f->attr('name', 'altEditorFilename');
-		$f->label = $this->_('Alternate template file for testing');
+		$f->label = $this->_('Alternate Template File for Testing');
 		$f->description = $this->_('Lets you assing a different template for certain users so they can preview / test new developments');
 		$f->attr('value', $template->altEditorFilename);
 		$f->collapsed = Inputfield::collapsedBlank;
@@ -52,7 +52,7 @@ class TemplateTester extends WireData implements Module {
 		
 		$f = $this->modules->get('InputfieldRadios');
 		$f->attr('name', 'altEditorFileFilter');
-		$f->label = $this->_("Apply alternative PHP template to");
+		$f->label = $this->_("Apply Alternate PHP Template to");
 		$f->addOption('loggedin', 'All logged in users');
 		$f->addOption('pageeditors', 'Users with edit permission for the individual page');
 		$f->addOption('role', 'Users with a specific role');
@@ -62,7 +62,7 @@ class TemplateTester extends WireData implements Module {
 		$f = $this->modules->get('InputfieldASMSelect');
 		$f->attr('name', 'altEditorFileRole');
 		$f->showIf = "altEditorFileFilter=role";
-		$f->label = $this->_("Role for alternative template");
+		$f->label = $this->_("Roles for Alternate Template");
 		foreach($this->roles as $role) {
 			$f->addOption($role->id, $role->name);
 		}
